@@ -2,108 +2,67 @@
 #include <iostream>
 #include <mpi.h>
 #include <mutex>
+#include "../../utils/synchronization.hpp"
+
+#define MANUAL_SERIALIZATION
+#include "../../utils/payload.hpp"
 
 using namespace ff;
 
-// to test serialization without using Cereal
-#define MANUAL_SERIALIZATION 1
-
-// ------------------------------------------------------
-size_t NMessages = 0;
-size_t MessageSize = 0;
-
-
-int send_val = 1;  // Valore arbitrario per la riduzione
-int recv_val = 0;
-
-void inline custom_barrier() {
-   // MPI_Allreduce(&send_val, &recv_val, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-}
-
-struct ExcType {
-    char* content = nullptr;
-
-	ExcType() { }
-
-    ExcType(size_t s){
-        content = (char*)malloc(MessageSize);
-    }
-	
-	
-#if !defined(MANUAL_SERIALIZATION)
-	template<class Archive>
-	void serialize(Archive & archive) {
-	  archive(cereal::binary_data(content, MessageSize));
-	}
-#endif	
-		
-};
-
-
-#ifdef MANUAL_SERIALIZATION
-template<typename Buffer>
-bool serialize(Buffer&b, ExcType* input){
-	b = {input->content, MessageSize};
-	return false;
-}
-
-template<typename T>
-void serializefreetask(T *o, ExcType* input) {
-    free(input->content);
-	delete input;
-}
-
-template<typename Buffer>
-bool deserialize(const Buffer&b, ExcType* p){
-	p->content = b.first;
-	return false;
-}
+#ifndef ROUNDS
+#define ROUNDS 10
 #endif
+
+#ifndef SKIP_ROUNDS
+#define SKIP_ROUNDS 5
+#endif
+
+size_t NMessages = 0;
 
 
 struct Producer : ff::ff_monode_t<ExcType>{
-    size_t items;
-    size_t dataLength;
     double start_time, end_time;
-    bool firstRound = true;
-    Producer(size_t itemsToGenerate, size_t dataLength): items(itemsToGenerate), dataLength(dataLength) {}
+    int rounds = 0;
 
     ExcType* svc(ExcType* in){
         if (!in){
-            return new ExcType(MessageSize);
+            custom_barrier();
+            ff_send_out_to(new ExcType(MessageSize), 0);
+            return GO_ON;
         }
-        if (firstRound){
-            firstRound = false;
-            start_time = MPI_Wtime();
-            return in;
+        if (++rounds < ROUNDS+SKIP_ROUNDS){
+            if (rounds == SKIP_ROUNDS)
+                start_time = MPI_Wtime();
+            ff_send_out_to(in, 0);
+            return GO_ON;
         }
         end_time = MPI_Wtime();  
 
-#ifdef MANUAL_SERIALIZATION
-        free(in->content);
+#ifdef DEBUG
+        if (in->content[0] != 'C' || in->content[MessageSize-1] != 'O')
+            std::cerr << "Message was corrupted!\n";
+#endif
+
 	    delete in;
-#else	  
-	    delete in;
-#endif	
 
 	    return this->EOS;
     }
 
     void svc_end(){
         std::cout << "Round trip time of a message of size (" 
-                  << MessageSize << " bytes) = " << ((end_time - start_time)*1000000) << " us.\n";
+                  << MessageSize << " bytes) = " << (((end_time - start_time)*1000000)/ROUNDS) << " us.\n";
     }	
 };
 
-struct Consumer : ff::ff_minode_t<ExcType>{
+struct Consumer : ff::ff_monode_t<ExcType>{
     int svc_init(){
         custom_barrier();
         return 0;
     }
 
     ExcType* svc(ExcType* in){
-        ff::cout << "Recevied something forwording it now!\n";
-        return in;
+        ff_send_out_to(in, 0);
+        return GO_ON;
     }
 };
 
@@ -121,7 +80,7 @@ int main(int argc, char*argv[]){
 
     MessageSize = strtoul(argv[1], nullptr, 0);
     
-    Producer p(NMessages, MessageSize);
+    Producer p;
     Consumer c;
     ff_pipeline pipe;
     pipe.add_stage(&p);

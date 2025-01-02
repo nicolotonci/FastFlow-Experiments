@@ -1,19 +1,18 @@
 #include <iostream>
 #include <mpi.h>
-int send_val = 1;  // Valore arbitrario per la riduzione
-int recv_val = 0;
-
-void inline custom_barrier() {
-    MPI_Allreduce(&send_val, &recv_val, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-}
-
+#include "../../utils/threadMapping.hpp"
+#include "../../utils/synchronization.hpp"
 
 int main(int argc, char** argv){
 
     if(argc < 3) {
-        printf("Usage: %s <messages> <messageSize>\n", argv[0]);
+        printf("Usage: %s <messages> <messageSize> [threadID]\n", argv[0]);
         return 1;
     }
+
+    //if provided, set the thread mapping
+    if (argc == 3) pinThreadToCore(atoi(argv[3]));
+
     MPI_Init(&argc, &argv);
     int rank, size;
     
@@ -30,16 +29,12 @@ int main(int argc, char** argv){
     size_t NMessages = strtoul(argv[1], nullptr, 0);
     size_t MessageSize = strtoul(argv[2], nullptr, 0);
     
-    // timers variables
     double start_time, end_time;
 
-    // Listening for new connections, expecting "ping", sending "pong"
     if(rank == 0) {
-        // get the handle 
 
-        //MPI_Barrier(MPI_COMM_WORLD);
         custom_barrier();
-        start_time = MPI_Wtime(); // Inizia il timer
+        start_time = MPI_Wtime();
 
         for (size_t i = 0; i < NMessages; ++i) {
             char* buffer = (char*)calloc(MessageSize, sizeof(char));
@@ -47,17 +42,14 @@ int main(int argc, char** argv){
             free(buffer);
         }
         MPI_Send("E", 1, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
-        custom_barrier();
-        //MPI_Barrier(MPI_COMM_WORLD); // Sincronizzazione finale
-        end_time = MPI_Wtime(); // Ferma il timer
+        end_time = MPI_Wtime();
         std::cout << "Producer: Total time for sending " << NMessages << " messages of size " 
                   << MessageSize << " = " << ((end_time - start_time)*1000) << " ms.\n";
 
     }
     else {
-        //MPI_Barrier(MPI_COMM_WORLD); // Sincronizzazione iniziale
         custom_barrier();
-        start_time = MPI_Wtime(); // Inizia il timer
+        start_time = MPI_Wtime();
         int mSize;
         MPI_Status s;
         MPI_Probe(0, 0, MPI_COMM_WORLD, &s);
@@ -69,8 +61,6 @@ int main(int argc, char** argv){
             MPI_Probe(0, 0, MPI_COMM_WORLD, &s);
             MPI_Get_count(&s, MPI_CHAR, &mSize);
         }
-        custom_barrier();
-        //MPI_Barrier(MPI_COMM_WORLD);
         end_time = MPI_Wtime(); 
 
         std::cout << "Consumer: Total time for receiving " << NMessages << " messages of size " 

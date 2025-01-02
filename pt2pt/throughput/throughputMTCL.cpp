@@ -2,13 +2,19 @@
 #define SINGLE_IO_THREAD
 #include "mtcl.hpp"
 #include <mpi.h>
+#include "../../utils/threadMapping.hpp"
+#include "../../utils/synchronization.hpp"
 
 int main(int argc, char** argv){
 
     if(argc < 3) {
-        printf("Usage: %s <messages> <messageSize>\n", argv[0]);
+        printf("Usage: %s <messages> <messageSize> [threadID]\n", argv[0]);
         return 1;
     }
+
+    //if provided, set the thread mapping
+    if (argc == 3) pinThreadToCore(atoi(argv[3]));
+
     
 	MTCL::Manager::init("ThroughputTest");
     
@@ -30,14 +36,12 @@ int main(int argc, char** argv){
     // timers variables
     double start_time, end_time;
 
-    // Listening for new connections, expecting "ping", sending "pong"
     if(rank == 0) {
         MTCL::Manager::listen("MPI:0");
-        // get the handle 
         auto handle = MTCL::Manager::getNext();
 
-        MPI_Barrier(MPI_COMM_WORLD);
-        start_time = MPI_Wtime(); // Inizia il timer
+        custom_barrier();
+        start_time = MPI_Wtime();
 
         for (size_t i = 0; i < NMessages; ++i) {
             char* buffer = (char*)calloc(MessageSize, sizeof(char));
@@ -45,18 +49,15 @@ int main(int argc, char** argv){
             free(buffer);
         }
         handle.close();
-        MPI_Barrier(MPI_COMM_WORLD); // Sincronizzazione finale
-        end_time = MPI_Wtime(); // Ferma il timer
+        end_time = MPI_Wtime(); 
         std::cout << "Producer: Total time for sending " << NMessages << " messages of size " 
                   << MessageSize << " = " << ((end_time - start_time)*1000) << " ms.\n";
 
     }
     else {
-		//auto handle = 
-        MTCL::Manager::connect("MPI:0").yield();
-        MPI_Barrier(MPI_COMM_WORLD); // Sincronizzazione iniziale
-        start_time = MPI_Wtime(); // Inizia il timer
-        auto handle = MTCL::Manager::getNext();
+        auto handle = MTCL::Manager::connect("MPI:0");
+        custom_barrier();
+        start_time = MPI_Wtime();
         size_t mSize;
         handle.probe(mSize);
         while(mSize){
@@ -67,7 +68,6 @@ int main(int argc, char** argv){
             handle = MTCL::Manager::getNext();
             handle.probe(mSize);
         }
-        MPI_Barrier(MPI_COMM_WORLD); // Sincronizzazione finale
         end_time = MPI_Wtime(); // Ferma il timer
         handle.close();
 
