@@ -23,9 +23,9 @@
 #
 # ---------------------------------------------------------------------------
 CXX = mpicxx
-CXXFLAGS            += -std=c++17 -DENABLE_MPI
+CXXFLAGS            += -std=c++17
 ifdef DEBUG
-    OPTIMIZE_FLAGS  += -pg -fno-inline-functions
+    OPTIMIZE_FLAGS  += -g -fno-inline-functions
 else
     OPTIMIZE_FLAGS  += -O3 -finline-functions -DNDEBUG
 endif
@@ -41,13 +41,6 @@ else
     INCS            += -I ~/cereal
 endif
 
-OS                   = $(shell uname)
-
-ifeq ($(strip $(OS)),Darwin)
-	CXX += -DNO_DEFAULT_MAPPING
-endif
-
-
 CXXFLAGS            += -Wall
 LIBS                += -pthread
 INCLUDES             = $(INCS)
@@ -59,25 +52,11 @@ TARGET               = $(SOURCES:.cpp=)
 .SUFFIXES: .c .cpp .o
 
 LatencyMTCL: LatencyMTCL.cpp
-	$(CXX) $(CXXFLAGS) $(OPTIMIZE_FLAGS) -I$(MTCL_HOME)/include -o $@ $< $(LIBS)
+	$(CXX) $(CXXFLAGS) -DENABLE_MPI $(OPTIMIZE_FLAGS) -I$(MTCL_HOME)/include -o $@ $< $(LIBS)
 LatencyMPI: LatencyMPI.cpp
 	$(CXX) $(CXXFLAGS) $(OPTIMIZE_FLAGS) -o $@ $<
 LatencyFF: LatencyFF.cpp
-	$(CXX) $(CXXFLAGS) -DDFF_EXCLUDE_BLOCKING $(INCS) $(OPTIMIZE_FLAGS) -o $@ $< $(LIBS)
-
-%.d: %.cpp
-	set -e; $(CXX) -MM $(INCLUDES) $(CXXFLAGS) $< \
-		| sed 's/\($*\)\.o[ :]*/\1.o $@ : /g' > $@; \
-		[ -s $@ ] || rm -f $@
-%.d: %.c
-	set -e; $(CC) -MM $(INCLUDES) $(CFLAGS)  $< \
-		| sed 's/\($*\)\.o[ :]*/\1.o $@ : /g' > $@; \
-		[ -s $@ ] || rm -f $@
-%.o: %.c
-	$(CC) $(INCLUDES) $(CFLAGS) -c -o $@ $<
-%: %.cpp
-	$(CXX) $(INCLUDES) $(CXXFLAGS) $(OPTIMIZE_FLAGS) -o $@ $< $(LDFLAGS) $(LIBS)
-
+	$(CXX) $(CXXFLAGS) -DNO_DEFAULT_MAPPING -DDFF_EXCLUDE_BLOCKING $(INCS) $(OPTIMIZE_FLAGS) -o $@ $< $(LIBS)
 
 all: $(TARGET)
 
