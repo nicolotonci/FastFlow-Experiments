@@ -5,6 +5,8 @@
 
 size_t MessageSize = 0;
 
+#ifndef BASE_TYPE_PAYLOAD
+
 struct ExcType {
     char* content = nullptr;
 	ExcType() { }
@@ -44,21 +46,50 @@ bool serialize(Buffer&b, ExcType* input){
 	return false;
 }
 
-#ifndef REUSE_PAYLOAD
 template<typename T>
 void serializefreetask(T *o, ExcType* input) {
-	delete input;
-}
-#else
-template<typename T>
-void serializefreetask(T *o, ExcType* input) {}
+#ifndef REUSE_PAYLOAD
+    delete input;
 #endif
+}
 
 template<typename Buffer>
 bool deserialize(const Buffer&b, ExcType* p){
 	p->content = b.first;
 	return false;
 }
+#endif // MANUAL_SERIALIZATION
+
+#else // BASE_TYPE_PAYLOAD
+
+struct ExcType {
+    int p;
+    ExcType(int p) : p(p) {};
+};
+
+template<typename Buffer>
+bool serialize(Buffer&b, ExcType* input){
+	b = {(char*)input, sizeof(ExcType)};
+	return false;
+}
+
+template<typename T>
+void serializefreetask(T *o, ExcType* input) {
+#ifndef REUSE_PAYLOAD
+	delete input;
+#endif
+}
+
+template<typename Buffer>
+void deserializealloctask(const Buffer& b, ExcType*& p) {
+        p = reinterpret_cast<ExcType*>(b.first);
+};
+
+template<typename Buffer>
+bool deserialize(const Buffer&b, ExcType* p){
+	return false;
+}
+
 #endif
 
 #endif //PAYLOAD_HPP

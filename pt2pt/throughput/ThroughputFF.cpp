@@ -6,6 +6,7 @@
 
 #define MANUAL_SERIALIZATION
 #define REUSE_PAYLOAD
+#define BASE_TYPE_PAYLOAD
 #include "../../utils/payload.hpp"
 
 
@@ -58,8 +59,8 @@ struct Consumer : ff::ff_minode_t<ExcType>{
 
     ExcType* svc(ExcType* in){
 	  
-#ifdef MANUAL_SERIALIZATION
-	  delete in;
+#ifdef BASE_TYPE_PAYLOAD
+	  free(in);
 #else	  
 	  delete in;
 #endif	  
