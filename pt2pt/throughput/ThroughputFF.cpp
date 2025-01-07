@@ -43,13 +43,12 @@ struct Producer : ff::ff_monode_t<ExcType>{
 
     void svc_end(){
         end_time = MPI_Wtime();
-        std::cout << "Producer: Total time for sending " << NMessages << " messages of size " 
-                  << MessageSize << " = " << ((end_time - start_time)*1000) << " ms.\n"; 
+        //std::cout << "Producer: Total time for sending " << NMessages << " messages of size " 
+        //          << MessageSize << " = " << ((end_time - start_time)*1000) << " ms.\n"; 
     }	
 };
 
 struct Consumer : ff::ff_minode_t<ExcType>{
-    int processedItems = 0;
     double start_time, end_time;
     int svc_init(){
         custom_barrier();
@@ -69,8 +68,9 @@ struct Consumer : ff::ff_minode_t<ExcType>{
 
     void svc_end(){
         end_time = MPI_Wtime();
-        std::cout << "Consumer: Total time for receiving " << NMessages << " messages of size " 
-                  << MessageSize << " = " << ((end_time - start_time)*1000) << " ms.\n";
+        std::cout << "FF;" << NMessages << ";" << MessageSize << ";" << ((end_time - start_time)*1000) << std::endl;
+        //std::cout << "Consumer: Total time for receiving " << NMessages << " messages of size " 
+        //          << MessageSize << " = " << ((end_time - start_time)*1000) << " ms.\n";
     }
 };
 

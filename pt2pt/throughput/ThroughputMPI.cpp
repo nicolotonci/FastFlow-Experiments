@@ -11,7 +11,7 @@ int main(int argc, char** argv){
     }
 
     //if provided, set the thread mapping
-    if (argc == 3) pinThreadToCore(atoi(argv[3]));
+    if (argc == 4) pinThreadToCore(atoi(argv[3]));
     
     int provided;
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
@@ -33,19 +33,18 @@ int main(int argc, char** argv){
     double start_time, end_time;
 
     if(rank == 0) {
-
+        char* buffer = (char*)calloc(MessageSize, sizeof(char));
         custom_barrier();
         start_time = MPI_Wtime();
 
-        for (size_t i = 0; i < NMessages; ++i) {
-            char* buffer = (char*)calloc(MessageSize, sizeof(char));
+        for (size_t i = 0; i < NMessages; ++i) 
             MPI_Send(buffer, MessageSize, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
-            free(buffer);
-        }
+
         MPI_Send("E", 1, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
         end_time = MPI_Wtime();
-        std::cout << "Producer: Total time for sending " << NMessages << " messages of size " 
-                  << MessageSize << " = " << ((end_time - start_time)*1000) << " ms.\n";
+        free(buffer);
+        //std::cout << "Producer: Total time for sending " << NMessages << " messages of size " 
+        //          << MessageSize << " = " << ((end_time - start_time)*1000) << " ms.\n";
 
     }
     else {
@@ -64,8 +63,10 @@ int main(int argc, char** argv){
         }
         end_time = MPI_Wtime(); 
 
-        std::cout << "Consumer: Total time for receiving " << NMessages << " messages of size " 
-                  << MessageSize << " = " << ((end_time - start_time)*1000) << " ms.\n";
+        //std::cout << "Consumer: Total time for receiving " << NMessages << " messages of size " 
+        //          << MessageSize << " = " << ((end_time - start_time)*1000) << " ms.\n";
+        std::cout << "MPI;" << NMessages << ";" << MessageSize << ";" << ((end_time - start_time)*1000) << std::endl;
+
     }
 
     return MPI_Finalize();

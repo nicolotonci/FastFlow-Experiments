@@ -49,8 +49,10 @@ struct Producer : ff::ff_monode_t<ExcType>{
     }
 
     void svc_end(){
-        std::cout << "Round trip time of a message of size (" 
-                  << MessageSize << " bytes) = " << (((end_time - start_time)*1000000)/ROUNDS) << " us.\n";
+        std::cout << "FF;" << MessageSize << ";" << (((end_time - start_time)*1000000)/ROUNDS) << std::endl;
+
+        //std::cout << "Round trip time of a message of size (" 
+        //          << MessageSize << " bytes) = " << (((end_time - start_time)*1000000)/ROUNDS) << " us.\n";
     }	
 };
 

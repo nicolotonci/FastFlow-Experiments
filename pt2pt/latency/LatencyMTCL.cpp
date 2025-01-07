@@ -67,9 +67,9 @@ int main(int argc, char** argv){
         free(buffer);
         handle.close();
 
-        std::cout << "Round trip time of a message of size (" 
-                  << MessageSize << " bytes) = " << (((end_time - start_time)*1000000)/ROUNDS) << " us.\n";
-
+        //std::cout << "Round trip time of a message of size (" 
+        //          << MessageSize << " bytes) = " << (((end_time - start_time)*1000000)/ROUNDS) << " us.\n";
+        std::cout << "MTCL;" << MessageSize << ";" << (((end_time - start_time)*1000000)/ROUNDS) << std::endl;
     }
     else {
         size_t mSize;

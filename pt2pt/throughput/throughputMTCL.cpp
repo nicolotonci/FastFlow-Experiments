@@ -13,7 +13,7 @@ int main(int argc, char** argv){
     }
 
     //if provided, set the thread mapping
-    if (argc == 3) pinThreadToCore(atoi(argv[3]));
+    if (argc == 4) pinThreadToCore(atoi(argv[3]));
 
     
 	MTCL::Manager::init("ThroughputTest");
@@ -39,40 +39,40 @@ int main(int argc, char** argv){
     if(rank == 0) {
         MTCL::Manager::listen("MPI:0");
         auto handle = MTCL::Manager::getNext();
+        char* buffer = (char*)calloc(MessageSize, sizeof(char));
 
         custom_barrier();
         start_time = MPI_Wtime();
 
-        for (size_t i = 0; i < NMessages; ++i) {
-            char* buffer = (char*)calloc(MessageSize, sizeof(char));
+        for (size_t i = 0; i < NMessages; ++i) 
             handle.send(buffer, MessageSize);
-            free(buffer);
-        }
+    
         handle.close();
-        end_time = MPI_Wtime(); 
-        std::cout << "Producer: Total time for sending " << NMessages << " messages of size " 
-                  << MessageSize << " = " << ((end_time - start_time)*1000) << " ms.\n";
+        end_time = MPI_Wtime();
+        free(buffer);
+        //std::cout << "Producer: Total time for sending " << NMessages << " messages of size " 
+        //          << MessageSize << " = " << ((end_time - start_time)*1000) << " ms.\n";
 
     }
     else {
         auto handle = MTCL::Manager::connect("MPI:0");
+        size_t mSize;
         custom_barrier();
         start_time = MPI_Wtime();
-        size_t mSize;
         handle.probe(mSize);
         while(mSize){
             char* buffer = (char*)malloc(mSize);
             handle.receive(buffer, mSize);
             free(buffer);
-            handle.yield();
-            handle = MTCL::Manager::getNext();
             handle.probe(mSize);
         }
         end_time = MPI_Wtime(); // Ferma il timer
         handle.close();
 
-        std::cout << "Consumer: Total time for receiving " << NMessages << " messages of size " 
-                  << MessageSize << " = " << ((end_time - start_time)*1000) << " ms.\n";
+        //std::cout << "Consumer: Total time for receiving " << NMessages << " messages of size " 
+        //          << MessageSize << " = " << ((end_time - start_time)*1000) << " ms.\n";
+        std::cout << "MTCL;" << NMessages << ";" << MessageSize << ";" << ((end_time - start_time)*1000) << std::endl;
+
     }
 
     MTCL::Manager::finalize(true);
