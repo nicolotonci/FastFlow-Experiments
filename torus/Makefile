@@ -27,7 +27,7 @@ CXXFLAGS            += -std=c++17
 ifdef DEBUG
     OPTIMIZE_FLAGS  += -g -fno-inline-functions
 else
-    OPTIMIZE_FLAGS  += -O3 -finline-functions -DNDEBUG -DDISABLE_TCP
+    OPTIMIZE_FLAGS  += -O3 -finline-functions -DNDEBUG
 endif
 
 ifdef FF_HOME
@@ -52,11 +52,7 @@ TARGET               = $(SOURCES:.cpp=)
 .PHONY: all clean cleanall 
 .SUFFIXES: .c .cpp .o
 
-ThroughputMTCL: ThroughputMTCL.cpp
-	$(CXX) $(CXXFLAGS) -DENABLE_MPI $(OPTIMIZE_FLAGS) -I$(MTCL_HOME)/include -o $@ $< $(LIBS)
-ThroughputMPI: ThroughputMPI.cpp
-	$(CXX) $(CXXFLAGS) $(OPTIMIZE_FLAGS) -o $@ $<
-ThroughputFF: ThroughputFF.cpp
+torus: torus.cpp
 	$(CXX) $(CXXFLAGS) -DNO_DEFAULT_MAPPING -DDFF_EXCLUDE_BLOCKING $(INCS) $(OPTIMIZE_FLAGS) -o $@ $< $(LIBS)
 
 all: $(TARGET)

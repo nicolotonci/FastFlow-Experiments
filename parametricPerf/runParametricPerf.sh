@@ -1,10 +1,22 @@
-MESSAGES=10000
+MESSAGES=100
 RIPETIZIONI=2
-MACCHINE=(localhost localhost)
-CONFIG_FILENAME=serializationConfigExp.json
+MACCHINE=(localhost localhost localhost)
+CONFIG_FILENAME=parametricPerf_generated.json
+PRODUCER_TIME=5 #milliseconds
+CONSUMER_TIME=5 #milliseconds
+PRODUCER_GROUPS=1
+CONSUMER_GROUPS=1
+PRODUCER_PER_GROUP=1
+CONSUMERS_PER_GROUP=1
+BATCH_SIZE=1
+BATCH_BYTE_SIZE=2M 
+
+let total_groups=PRODUCER_GROUPS+CONSUMER_GROUPS
+
+echoerr() { printf "%s\n" "$*" >&2; }
 
 generaFileConfig() {
-    echo $1 $2 $3 $4 $5
+    echoerr $1 $2 $3 $4 $5 $6
 
     local fileName=$1
     local groupsSx=$2
@@ -12,12 +24,15 @@ generaFileConfig() {
     local nome_array=$4
     local machines=("${!nome_array}")
     local batchSize
+    local batchByteSize
 
     if [ -z ${5+x} ]; then batchSize=1; else batchSize=$5; fi
+    if [ -z ${6+x} ]; then batchByteSize=1; else batchByteSize=$6; fi
 
     rm $fileName
 
     echo "{
+    \"protocol\" : \"MPI\",
     \"groups\" : [" >> $fileName
 
     # printing the dx nodes in the configuration file
@@ -28,7 +43,8 @@ generaFileConfig() {
         echo "        {
             \"endpoint\" : \"$machine:$((8000 + $i))\",
             \"name\" : \"S${i}\",
-            \"batchSize\" : ${batchSize}
+            \"batchSize\" : ${batchSize},
+            \"batchByteSize\" : \"$batchByteSize\"
         }
         ," >> $fileName
     done
@@ -50,37 +66,25 @@ generaFileConfig() {
 }" >> $fileName
 }
 
-generaFileConfig $CONFIG_FILENAME 1 1 MACCHINE[@] 100
+generaFileConfig $CONFIG_FILENAME $PRODUCER_GROUPS $CONSUMER_GROUPS MACCHINE[@] $BATCH_SIZE $BATCH_BYTE_SIZE
 
 #generate the list of machines separated by comma
 IFS=','       # Imposta IFS su ","
 mpi_machines_list="${MACCHINE[*]}"
 unset IFS
 
-echo "Machine used: $mpi_machines_list"
+
+echoerr "Machine used: $mpi_machines_list"
+
 
 
 ## reindirizza std error to dev null to suppress error messages
-exec 2>/dev/null
+#exec 2>/dev/null
 
-printf "%-12s %-10s %-10s %-16s\n" "MessageSize" "Time (ms)" "Std Dev" "Throughput (Mb/s)"
+printf "Messages;MessageSize;ProducerGroups;ConsumerGroups;ProducerPerGroup;ConsumerPerGroup;Ondemand;Time\n"
 for ((messageSize=2; messageSize<=1048576; messageSize*=2)); do
     values=()
     for((ripetizione=0; ripetizione<$RIPETIZIONI; ripetizione+=1)); do
-       values+=($(mpirun -H $mpi_machines_list  -np 2 $(pwd)/parametricPerf $MESSAGES $messageSize 0 0 1 1 1 1  --DFF_Config=$(pwd)/$CONFIG_FILENAME | tail -n 1 | awk -F'= ' '{print $2}'))
-        #echo "mpirun -H $mpi_machines_list  -np 2 $(pwd)/test_parametricPerf $MESSAGES $messageSize 0 0 1 1 1 1  --DFF_Config=$(pwd)/$CONFIG_FILENAME"
+       mpirun -H $mpi_machines_list  -np 2 $(pwd)/parametricPerf $MESSAGES $messageSize $PRODUCER_TIME $CONSUMER_TIME $PRODUCER_GROUPS $CONSUMER_GROUPS $PRODUCER_PER_GROUP $CONSUMERS_PER_GROUP  --DFF_Config=$(pwd)/$CONFIG_FILENAME | tail -1
     done
-
-    # Calcola la media
-    mean=$(echo "${values[@]}" | awk '{sum=0; for(i=1; i<=NF; i++) sum+=$i; print sum/NF}')
-
-    # Calcola la somma dei quadrati delle differenze dalla media
-    sum_squared_diff=$(echo "${values[@]}" | awk -v mean="$mean" '{sum=0; for(i=1; i<=NF; i++) sum+=($i-mean)^2; print sum}')
-
-    # Calcola la deviazione standard
-    std_dev=$(echo "scale=4; sqrt($sum_squared_diff / $RIPETIZIONI)" | bc)
-
-    throughput=$(echo "scale=4; (($MESSAGES * $messageSize) / $mean) / 1000" | bc)
-
-    printf "%-12s %-10s %-10s %-16s\n" "$messageSize"  "$mean" "$std_dev" "$throughput"
 done

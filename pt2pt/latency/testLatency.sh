@@ -1,6 +1,7 @@
-MESSAGES=100000
 RIPETIZIONI=1
 MACCHINE=(localhost localhost)
+
+trap "echo Exited!; exit;" SIGINT SIGTERM
 
 #generate the list of machines separated by comma
 IFS=','       # Imposta IFS su ","
@@ -17,18 +18,18 @@ exec 2>/dev/null
 printf "App;MessageSize;Time\n"
 for ((messageSize=2; messageSize<=1048576; messageSize*=2)); do
     for((ripetizione=0; ripetizione<$RIPETIZIONI; ripetizione+=1)); do
-       mpirun -H $mpi_machines_list  -np 2 $(pwd)/LatencyFF  $messageSize --DFF_Config=$(pwd)/dff.json | tail -1
+       mpirun -H $mpi_machines_list  -np 2 --bind-to none -x UCX_ZCOPY_THRESH=2M $(pwd)/LatencyFF  $messageSize --DFF_Config=$(pwd)/dff.json | tail -1
     done
 done
 
 for ((messageSize=2; messageSize<=1048576; messageSize*=2)); do
     for((ripetizione=0; ripetizione<$RIPETIZIONI; ripetizione+=1)); do
-       mpirun -H $mpi_machines_list  -np 2 $(pwd)/LatencyMTCL $messageSize | tail -1
+       mpirun -H $mpi_machines_list  -np 2 --bind-to none -x UCX_ZCOPY_THRESH=2M $(pwd)/LatencyMTCL $messageSize | tail -1
     done
 done
 
 for ((messageSize=2; messageSize<=1048576; messageSize*=2)); do
     for((ripetizione=0; ripetizione<$RIPETIZIONI; ripetizione+=1)); do
-       mpirun -H $mpi_machines_list  -np 2 $(pwd)/LatencyMPI $messageSize | tail -1
+       mpirun -H $mpi_machines_list  -np 2 --bind-to none -x UCX_ZCOPY_THRESH=2M $(pwd)/LatencyMPI $messageSize | tail -1
     done
 done
