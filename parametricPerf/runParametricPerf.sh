@@ -85,6 +85,10 @@ printf "Messages;MessageSize;ProducerGroups;ConsumerGroups;ProducerPerGroup;Cons
 for ((messageSize=2; messageSize<=1048576; messageSize*=2)); do
     values=()
     for((ripetizione=0; ripetizione<$RIPETIZIONI; ripetizione+=1)); do
-       mpirun -H $mpi_machines_list  -np 2 $(pwd)/parametricPerf $MESSAGES $messageSize $PRODUCER_TIME $CONSUMER_TIME $PRODUCER_GROUPS $CONSUMER_GROUPS $PRODUCER_PER_GROUP $CONSUMERS_PER_GROUP  --DFF_Config=$(pwd)/$CONFIG_FILENAME | tail -1
+        if [ "$USE_SLURM" -eq 1 ]; then
+            srun -N $total_groups --exclusive --cpus-per-task=36 --export=UCX_ZCOPY_THRESH=2M $(pwd)/parametricPerf $MESSAGES $messageSize $PRODUCER_TIME $CONSUMER_TIME $PRODUCER_GROUPS $CONSUMER_GROUPS $PRODUCER_PER_GROUP $CONSUMERS_PER_GROUP  --DFF_Config=$(pwd)/$CONFIG_FILENAME | tail -1
+        else
+            mpirun -H $mpi_machines_list -np $total_groups --bind-to none -x UCX_ZCOPY_THRESH=2M $(pwd)/parametricPerf $MESSAGES $messageSize $PRODUCER_TIME $CONSUMER_TIME $PRODUCER_GROUPS $CONSUMER_GROUPS $PRODUCER_PER_GROUP $CONSUMERS_PER_GROUP  --DFF_Config=$(pwd)/$CONFIG_FILENAME | tail -1
+        fi
     done
 done
