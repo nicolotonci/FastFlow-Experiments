@@ -47,14 +47,15 @@ LIBS                += -pthread
 INCLUDES             = $(INCS)
 
 SOURCES              = $(wildcard *.cpp)
-TARGET               = $(SOURCES:.cpp=)
+TARGET               = torus torusSHM
 
 .PHONY: all clean cleanall 
 .SUFFIXES: .c .cpp .o
 
 torus: torus.cpp
 	$(CXX) $(CXXFLAGS) -DNO_DEFAULT_MAPPING -DDFF_EXCLUDE_BLOCKING $(INCS) $(OPTIMIZE_FLAGS) -o $@ $< $(LIBS)
-
+torusSHM: torus.cpp
+	$(CXX) $(CXXFLAGS) -DDISABLE_FF_DISTRIBUTED $(INCS) $(OPTIMIZE_FLAGS) -o $@ $< $(LIBS)
 all: $(TARGET)
 
 clean: 

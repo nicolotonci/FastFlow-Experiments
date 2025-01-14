@@ -54,13 +54,15 @@ IFS=','       # Imposta IFS su ","
 mpi_machines_list="${MACCHINE[*]}"
 unset IFS
 
-echoerr "Machine used: $mpi_machines_list"
+if [ "$USE_SLURM" -eq 0 ]; then
+    echoerr "Machine used: $mpi_machines_list"
+fi
 
 ## reindirizza std error to dev null to suppress error messages
 exec 2>/dev/null
 
 printf "Stages;Tasks;Time;Msg/s\n"
-for((GROUPS_TOT=2; GROUPS_TOT<$GROUPS_MAX; GROUPS_TOT*=2)); do
+for((GROUPS_TOT=2; GROUPS_TOT<=$GROUPS_MAX; GROUPS_TOT*=2)); do
     generaFileConfig $CONFIG_FILENAME $GROUPS_TOT MACCHINE[@] $BATCH_SIZE $BATCH_BYTE_SIZE
     for((ripetizione=0; ripetizione<$RIPETIZIONI; ripetizione+=1)); do
         if [ "$USE_SLURM" -eq 1 ]; then
