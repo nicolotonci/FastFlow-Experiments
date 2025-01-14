@@ -64,7 +64,7 @@ printf "Stages;Tasks;Time;Msg/s\n"
 
 for((ripetizione=0; ripetizione<$RIPETIZIONI; ripetizione+=1)); do
     if [ "$USE_SLURM" -eq 1 ]; then
-        srun -N $GROUPS_TOT --exclusive --cpus-per-task=36 --export=UCX_ZCOPY_THRESH=2M $(pwd)/torus $GROUPS_TOT $N_TICKS  --DFF_Config=$(pwd)/$CONFIG_FILENAME | tail -1
+        srun -N $GROUPS_TOT --exclusive --cpus-per-task=36 --export=ALL,UCX_ZCOPY_THRESH=2M $(pwd)/torus $GROUPS_TOT $N_TICKS  --DFF_Config=$(pwd)/$CONFIG_FILENAME | tail -1
     else
         mpirun -H $mpi_machines_list  -np $GROUPS_TOT $(pwd)/torus $GROUPS_TOT $N_TICKS  --DFF_Config=$(pwd)/$CONFIG_FILENAME | tail -1
     fi
