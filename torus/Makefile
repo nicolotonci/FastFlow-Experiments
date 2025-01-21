@@ -27,7 +27,7 @@ CXXFLAGS            += -std=c++17
 ifdef DEBUG
     OPTIMIZE_FLAGS  += -g -fno-inline-functions
 else
-    OPTIMIZE_FLAGS  += -O3 -finline-functions -DNDEBUG -DDISABLE_TCP
+    OPTIMIZE_FLAGS  += -O3 -finline-functions -DNDEBUG
 endif
 
 ifdef FF_HOME
@@ -41,24 +41,21 @@ else
     INCS            += -I ~/cereal
 endif
 
+
 CXXFLAGS            += -Wall
 LIBS                += -pthread
 INCLUDES             = $(INCS)
 
 SOURCES              = $(wildcard *.cpp)
-TARGET               = $(SOURCES:.cpp=)
+TARGET               = torus torusSHM
 
 .PHONY: all clean cleanall 
 .SUFFIXES: .c .cpp .o
 
-LatencyMTCL: LatencyMTCL.cpp
-	$(CXX) $(CXXFLAGS) -DENABLE_MPI $(OPTIMIZE_FLAGS) -I$(MTCL_HOME)/include -o $@ $< $(LIBS)
-LatencyMPI: LatencyMPI.cpp
-	$(CXX) $(CXXFLAGS) $(OPTIMIZE_FLAGS) -o $@ $<
-LatencyFF: LatencyFF.cpp
-	$(CXX) $(CXXFLAGS) -DENABLE_MPI -DDFF_EXCLUDE_BLOCKING $(INCS) $(OPTIMIZE_FLAGS) -o $@ $< $(LIBS)
-LatencyMTCL_MT: LatencyMTCL_MT.cpp
-	$(CXX) $(CXXFLAGS) -DDFF_EXCLUDE_BLOCKING -DENABLE_MPI $(INCS) -I$(MTCL_HOME)/include $(OPTIMIZE_FLAGS) -o $@ $< $(LIBS)
+torus: torus.cpp
+	$(CXX) $(CXXFLAGS) -DNO_DEFAULT_MAPPING -DDFF_EXCLUDE_BLOCKING $(INCS) $(OPTIMIZE_FLAGS) -o $@ $< $(LIBS)
+torusSHM: torus.cpp
+	$(CXX) $(CXXFLAGS) -DDISABLE_FF_DISTRIBUTED $(INCS) $(OPTIMIZE_FLAGS) -o $@ $< $(LIBS)
 all: $(TARGET)
 
 clean: 

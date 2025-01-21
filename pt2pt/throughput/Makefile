@@ -27,7 +27,7 @@ CXXFLAGS            += -std=c++17
 ifdef DEBUG
     OPTIMIZE_FLAGS  += -g -fno-inline-functions
 else
-    OPTIMIZE_FLAGS  += -O3 -finline-functions -DNDEBUG
+    OPTIMIZE_FLAGS  += -O3 -finline-functions -DNDEBUG -DDISABLE_TCP
 endif
 
 ifdef FF_HOME
