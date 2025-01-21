@@ -56,8 +56,9 @@ LatencyMTCL: LatencyMTCL.cpp
 LatencyMPI: LatencyMPI.cpp
 	$(CXX) $(CXXFLAGS) $(OPTIMIZE_FLAGS) -o $@ $<
 LatencyFF: LatencyFF.cpp
-	$(CXX) $(CXXFLAGS) -DDFF_EXCLUDE_BLOCKING $(INCS) $(OPTIMIZE_FLAGS) -o $@ $< $(LIBS)
-
+	$(CXX) $(CXXFLAGS) -DENABLE_MPI -DDFF_EXCLUDE_BLOCKING $(INCS) $(OPTIMIZE_FLAGS) -o $@ $< $(LIBS)
+LatencyMTCL_MT: LatencyMTCL_MT.cpp
+	$(CXX) $(CXXFLAGS) -DDFF_EXCLUDE_BLOCKING -DENABLE_MPI $(INCS) -I$(MTCL_HOME)/include $(OPTIMIZE_FLAGS) -o $@ $< $(LIBS)
 all: $(TARGET)
 
 clean: 

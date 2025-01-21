@@ -8,7 +8,7 @@
 #include "../../utils/synchronization.hpp"
 
 #ifndef ROUNDS
-#define ROUNDS 10
+#define ROUNDS 100
 #endif
 
 #ifndef SKIP_ROUNDS
@@ -23,7 +23,7 @@ int main(int argc, char** argv){
     }
 
     //if provided, set the thread mapping
-    if (argc == 3) pinThreadToCore(atoi(argv[2]));
+   // if (argc == 3) pinThreadToCore(atoi(argv[2]));
     
 	MTCL::Manager::init("ThroughputTest");
     
@@ -43,18 +43,28 @@ int main(int argc, char** argv){
     
     // timers variables
     double start_time = 0, end_time = 0;
-
+	if (argc == 3) pinThreadToCore(atoi(argv[2]));
     if(rank == 0) {
         MTCL::Manager::listen("MPI:0");
         auto handle = MTCL::Manager::getNext();
-        char* buffer = (char*)calloc(MessageSize, sizeof(char));
-        buffer[0] = 'A'; buffer[MessageSize-1] = 'B';
-
+        char* buffer = (char*)malloc(MessageSize);
+        char* buffer2 = (char*)malloc(MessageSize);
+	buffer[0] = 'A'; buffer[MessageSize-1] = 'B';
+   	size_t sz;
         custom_barrier();
         for(size_t it = 0; it < ROUNDS + SKIP_ROUNDS; ++it){
             if (it == SKIP_ROUNDS) start_time = MPI_Wtime();
-            handle.send(buffer, MessageSize);
-            handle.receive(buffer, MessageSize);
+                memcpy(buffer2, buffer, MessageSize);
+	       // auto start = std::chrono::high_resolution_clock::now();
+		handle.send(buffer2, MessageSize);
+	  
+	   //auto elapsed = std::chrono::high_resolution_clock::now() - start;
+	  // std::cout << "Send took: " << std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count() << " us\n";
+          
+	  free(buffer);
+	  handle.probe(sz);
+	  buffer = (char*) malloc(sz); 
+	  handle.receive(buffer, MessageSize);
         }
 
         end_time = MPI_Wtime();
