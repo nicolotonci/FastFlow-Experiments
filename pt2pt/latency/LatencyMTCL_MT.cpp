@@ -3,7 +3,7 @@
 #define MTCL_DISABLE_COLLECTIVES
 #define SINGLE_IO_THREAD
 #define NO_MTCL_MULTITHREADED
-#include <ff/dff.hpp>
+#include <ff/ff.hpp>
 #include <mtcl.hpp>
 #include <mpi.h>
 #include <mutex>
@@ -22,7 +22,6 @@ using namespace ff;
 #define SKIP_ROUNDS 5
 #endif
 
-size_t NMessages = 0;
 int rank;
 
 struct Receiver : public ff::ff_node {
@@ -32,7 +31,7 @@ struct Receiver : public ff::ff_node {
         if (rank == 0){
             MTCL::Manager::listen("MPI:0");
             auto handle = MTCL::Manager::getNext();
-            char* buffer_send = (char*)calloc(100*MessageSize, sizeof(char));
+            char* buffer_send = (char*)calloc(MessageSize, sizeof(char));
             buffer_send[0] = 'A'; buffer_send[MessageSize-1] = 'B';
             size_t sz;
 
@@ -51,12 +50,12 @@ struct Receiver : public ff::ff_node {
                 std::cerr << "Message received is corrupted\n";
                 abort();
             }
-            free(buffer_send);
+            //free(buffer_send);
             handle.close();
 
-            std::cout << "MTCL;" << MessageSize << ";" << (((end_time - start_time)*1000000)/ROUNDS) << std::endl;
+            std::cout << "MTCL_MT;" << MessageSize << ";" << (((end_time - start_time)*1000000)/ROUNDS) << std::endl;
         }
-        if (rank == 1){
+        else {
             MTCL::Manager::listen("MPI:1");
             auto handle = MTCL::Manager::getNext();
             custom_barrier();
@@ -93,7 +92,7 @@ struct Sender : public ff::ff_node {
     }
 
     void* svc(void* in){
-	((char*)in)[1] = 'B';
+	//((char*)in)[1] = 'B';
         handle.send(in, MessageSize);
         if (rank == 1)
             free(in);
@@ -131,7 +130,7 @@ int main(int argc, char*argv[]){
 	pipe.run();
 	pipe.wait();
 
-    MTCL::Manager::finalize();
+    MTCL::Manager::finalize(true);
     return 0;
 }
 
