@@ -12,6 +12,9 @@
 #define MANUAL_SERIALIZATION
 #include "../../utils/payload.hpp"
 
+#define MAPPING_STRING_0 "0,2,4"
+#define MAPPING_STRING_1 "6,8,10"
+
 using namespace ff;
 
 #ifndef ROUNDS
@@ -50,7 +53,7 @@ struct Receiver : public ff::ff_node {
                 std::cerr << "Message received is corrupted\n";
                 abort();
             }
-            //free(buffer_send);
+            free(buffer_send);
             handle.close();
 
             std::cout << "MTCL_MT;" << MessageSize << ";" << (((end_time - start_time)*1000000)/ROUNDS) << std::endl;
@@ -92,7 +95,6 @@ struct Sender : public ff::ff_node {
     }
 
     void* svc(void* in){
-	//((char*)in)[1] = 'B';
         handle.send(in, MessageSize);
         if (rank == 1)
             free(in);
@@ -114,6 +116,11 @@ int main(int argc, char*argv[]){
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MessageSize = strtoul(argv[1], nullptr, 0);
     
+    if (rank == 0)
+        threadMapper::instance()->setMappingList(MAPPING_STRING_0);
+    else
+        threadMapper::instance()->setMappingList(MAPPING_STRING_1);        
+
     Receiver r;
     Sender s;
     Forwarder f;
@@ -123,10 +130,6 @@ int main(int argc, char*argv[]){
     pipe.add_stage(&s);
     
 
-    /*if (pipe.run_and_wait_end()<0) {
-      error("running mainPipe\n");
-      return -1;
-    }*/
 	pipe.run();
 	pipe.wait();
 

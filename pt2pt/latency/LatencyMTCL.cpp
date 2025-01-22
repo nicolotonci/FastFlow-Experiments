@@ -44,27 +44,25 @@ int main(int argc, char** argv){
     // timers variables
     double start_time = 0, end_time = 0;
 	if (argc == 3) pinThreadToCore(atoi(argv[2]));
+
+
     if(rank == 0) {
         MTCL::Manager::listen("MPI:0");
         auto handle = MTCL::Manager::getNext();
         char* buffer = (char*)malloc(MessageSize);
-        char* buffer2 = (char*)malloc(MessageSize);
-	buffer[0] = 'A'; buffer[MessageSize-1] = 'B';
-   	size_t sz;
+	    buffer[0] = 'A'; buffer[MessageSize-1] = 'B';
+   	    size_t sz;
         custom_barrier();
         for(size_t it = 0; it < ROUNDS + SKIP_ROUNDS; ++it){
             if (it == SKIP_ROUNDS) start_time = MPI_Wtime();
-                memcpy(buffer2, buffer, MessageSize);
-	       // auto start = std::chrono::high_resolution_clock::now();
-		handle.send(buffer2, MessageSize);
-	  
-	   //auto elapsed = std::chrono::high_resolution_clock::now() - start;
-	  // std::cout << "Send took: " << std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count() << " us\n";
-          
-	  free(buffer);
-	  handle.probe(sz);
-	  buffer = (char*) malloc(sz); 
-	  handle.receive(buffer, MessageSize);
+               
+		    handle.send(buffer, MessageSize);
+	            
+	        handle.probe(sz);
+	        char* bufferRecv = (char*) malloc(sz); 
+	        handle.receive(bufferRecv, MessageSize);
+            memcpy(buffer, bufferRecv, sz);
+            free(bufferRecv);
         }
 
         end_time = MPI_Wtime();
@@ -77,8 +75,6 @@ int main(int argc, char** argv){
         free(buffer);
         handle.close();
 
-        //std::cout << "Round trip time of a message of size (" 
-        //          << MessageSize << " bytes) = " << (((end_time - start_time)*1000000)/ROUNDS) << " us.\n";
         std::cout << "MTCL;" << MessageSize << ";" << (((end_time - start_time)*1000000)/ROUNDS) << std::endl;
     }
     else {

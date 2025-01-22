@@ -37,6 +37,8 @@ int main(int argc, char** argv){
     size_t MessageSize = strtoul(argv[1], nullptr, 0);
     
     double start_time = 0, end_time = 0;
+    int mSize;
+    MPI_Status s;
 
     if(rank == 0) {
         
@@ -46,7 +48,14 @@ int main(int argc, char** argv){
         for(size_t it = 0; it < ROUNDS + SKIP_ROUNDS; ++it){
             if (it == SKIP_ROUNDS) start_time = MPI_Wtime();
             MPI_Send(buffer, MessageSize, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
-            MPI_Recv(buffer, MessageSize, MPI_CHAR, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            
+            // starting receiving
+            MPI_Probe(1, 0, MPI_COMM_WORLD, &s);
+            MPI_Get_count(&s, MPI_CHAR, &mSize);
+            char* bufferRecv = (char*)malloc(mSize);
+            MPI_Recv(bufferRecv, mSize, MPI_CHAR, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            memcpy(buffer, bufferRecv, mSize);
+            free(bufferRecv);
         }
 
         end_time = MPI_Wtime();
@@ -58,14 +67,10 @@ int main(int argc, char** argv){
 
         free(buffer);
                 
-        //std::cout << "Round trip time of a message of size (" 
-        //          << MessageSize << " bytes) = " << (((end_time - start_time)*1000000)/ROUNDS) << " us.\n";
         std::cout << "MPI;" << MessageSize << ";" << (((end_time - start_time)*1000000)/ROUNDS) << std::endl;
 
     }
     else {
-        int mSize;
-        MPI_Status s;
         custom_barrier();
         for (size_t it = 0;  it < ROUNDS + SKIP_ROUNDS; ++it ){
             MPI_Probe(0, 0, MPI_COMM_WORLD, &s);
