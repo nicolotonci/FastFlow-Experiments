@@ -35,11 +35,31 @@ struct ExcType {
         content = (char*)malloc(MessageSize);
         ar(cereal::binary_data(content, MessageSize));
     }
+#else
+    static void freeBlob(char* b, size_t sz){
+        free(b);
+    }
+    
+    static void freeTask(ExcType* ptr){
+        return;
+    }
+    
+    std::tuple<char*, size_t, bool> serialize(){
+        return {this->content, MessageSize, false};
+    }
+    
+    bool deserialize(char* buffer, size_t sz){
+        this->content = buffer;
+        return false;
+    }
+    
+    static ExcType* alloc(char* buf, size_t sz){
+        return new ExcType;
+    }
 #endif
-		
 };
 
-#ifdef MANUAL_SERIALIZATION
+#if 0
 template<typename Buffer>
 bool serialize(Buffer&b, ExcType* input){
 	b = {input->content, MessageSize};
@@ -65,30 +85,30 @@ bool deserialize(const Buffer&b, ExcType* p){
 struct ExcType {
     int p;
     ExcType(int p) : p(p) {};
-};
 
-template<typename Buffer>
-bool serialize(Buffer&b, ExcType* input){
-	b = {(char*)input, sizeof(ExcType)};
-	return false;
-}
-
-template<typename T>
-void serializefreetask(T *o, ExcType* input) {
+    static void freeBlob(char* b, size_t sz){
 #ifndef REUSE_PAYLOAD
-	delete input;
+        delete reinterpret_cast<ExcType*>(b);
 #endif
-}
+    }
+    
+    static void freeTask(ExcType* ptr){
+        return;
+    }
+    
+    std::tuple<char*, size_t, bool> serialize(){
+        return {(char*)this, sizeof(ExcType), false};
+    }
+    
+    bool deserialize(char* buffer, size_t sz){
+        return false;
+    }
+    
+    static ExcType* alloc(char* buf, size_t sz){
+        return reinterpret_cast<ExcType*>(buf);
+    }
 
-template<typename Buffer>
-void deserializealloctask(const Buffer& b, ExcType*& p) {
-        p = reinterpret_cast<ExcType*>(b.first);
 };
-
-template<typename Buffer>
-bool deserialize(const Buffer&b, ExcType* p){
-	return false;
-}
 
 #endif
 
