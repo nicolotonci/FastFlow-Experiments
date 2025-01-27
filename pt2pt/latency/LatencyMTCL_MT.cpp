@@ -3,7 +3,7 @@
 #define MTCL_DISABLE_COLLECTIVES
 #define SINGLE_IO_THREAD
 #define NO_MTCL_MULTITHREADED
-#include <ff/ff.hpp>
+#include <ff/dff.hpp>
 #include <mtcl.hpp>
 #include <mpi.h>
 #include <mutex>
@@ -13,7 +13,7 @@
 #include "../../utils/payload.hpp"
 
 #define MAPPING_STRING_0 "0,2,4"
-#define MAPPING_STRING_1 "6,8,10"
+#define MAPPING_STRING_1 "1,3,5"
 
 using namespace ff;
 
@@ -43,10 +43,10 @@ struct Receiver : public ff::ff_node {
                 if (it == SKIP_ROUNDS) start_time = MPI_Wtime();
                 ff_send_out(buffer_send);
                 handle.probe(sz);
+                free(buffer_send);
                 char* buffer_receive = (char*)malloc(sz);
                 handle.receive(buffer_receive, sz);
-                memcpy(buffer_send, buffer_receive, sz);
-                free(buffer_receive);
+                buffer_send = buffer_receive;
              }
              end_time = MPI_Wtime();
              if (buffer_send[0] != 'A' && buffer_send[MessageSize-1] != 'B') {

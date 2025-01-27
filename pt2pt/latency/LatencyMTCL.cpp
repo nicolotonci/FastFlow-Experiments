@@ -57,12 +57,11 @@ int main(int argc, char** argv){
             if (it == SKIP_ROUNDS) start_time = MPI_Wtime();
                
 		    handle.send(buffer, MessageSize);
-	            
 	        handle.probe(sz);
+            free(buffer);
 	        char* bufferRecv = (char*) malloc(sz); 
 	        handle.receive(bufferRecv, MessageSize);
-            memcpy(buffer, bufferRecv, sz);
-            free(bufferRecv);
+            buffer = bufferRecv;
         }
 
         end_time = MPI_Wtime();

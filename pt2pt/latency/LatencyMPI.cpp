@@ -48,14 +48,13 @@ int main(int argc, char** argv){
         for(size_t it = 0; it < ROUNDS + SKIP_ROUNDS; ++it){
             if (it == SKIP_ROUNDS) start_time = MPI_Wtime();
             MPI_Send(buffer, MessageSize, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
-            
+            free(buffer);
             // starting receiving
             MPI_Probe(1, 0, MPI_COMM_WORLD, &s);
             MPI_Get_count(&s, MPI_CHAR, &mSize);
             char* bufferRecv = (char*)malloc(mSize);
             MPI_Recv(bufferRecv, mSize, MPI_CHAR, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            memcpy(buffer, bufferRecv, mSize);
-            free(bufferRecv);
+            buffer = bufferRecv;
         }
 
         end_time = MPI_Wtime();

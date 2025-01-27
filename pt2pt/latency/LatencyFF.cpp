@@ -1,3 +1,4 @@
+#define NO_MTCL_MULTITHREADED
 #include <ff/dff.hpp>
 #include <iostream>
 #include <mpi.h>
