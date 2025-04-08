@@ -1,0 +1,15 @@
+{
+    "protocol" : "MPI",
+    "groups" : [
+        {
+            "name" : "G0",
+            "endpoint" : "ignore:-1",
+            "threadMapping" : "0,1"
+        },
+        {
+            "name" : "G1",
+            "endpoint" : "ignore:-1",
+            "threadMapping" : "2,3"
+        }
+    ]
+}
