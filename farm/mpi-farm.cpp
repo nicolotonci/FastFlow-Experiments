@@ -215,6 +215,11 @@ void Worker(int rank, int size) {
 			error = MPI_Wait(&send_reqs[curr], MPI_STATUS_IGNORE);
 			CHECK_ERROR(error);
 		}
+        std::vector<char*> tasks(tasks_in_batch);
+        for(int i = 0; i < tasks_in_batch; i++){
+            tasks[i] = new char[task_size];
+            std::memcpy(tasks[i], recv_buf.data()+task_size*i, task_size);
+        }
 #if 0
 		// compute in parallel all tasks in the batch
 #pragma omp parallel num_threads(th_x_worker)
@@ -228,13 +233,15 @@ void Worker(int rank, int size) {
 
 					// simulate work
 					int workload;
-					std::memcpy(&workload, recv_buf.data() + i*task_size, sizeof(workload));
+					std::memcpy(&workload, tasks[i], sizeof(workload));
 					if (workload) active_delay(workload*EXEC_TIME);
 
 					// copying the result in the send buffer
 					std::memcpy(send_buf[curr].data() + i*task_size,
-								recv_buf.data() + i*task_size,
+								tasks[i],
 								task_size);
+                                
+                    delete [] tasks[i];
 				}
 #pragma omp taskwait
 			}
@@ -247,16 +254,18 @@ void Worker(int rank, int size) {
 
                                         // simulate work
                                         int workload;
-                                        std::memcpy(&workload, recv_buf.data() + i*task_size, sizeof(workload));
+                                        std::memcpy(&workload, tasks[i], sizeof(workload));
                                         if (workload) active_delay(workload*EXEC_TIME);
-
+                                       
                                         // copying the result in the send buffer
                                         std::memcpy(send_buf[curr].data() + i*task_size,
-                                                                recv_buf.data() + i*task_size,
+                                                                tasks[i],
                                                                 task_size);
+                                        delete [] tasks[i];
                                 }
 
 #endif
+
 		error = MPI_Isend(send_buf[curr].data(), tasks_in_batch*task_size,
 						  MPI_BYTE, collector,
 						  RESULT_TAG, MPI_COMM_WORLD,
@@ -299,9 +308,6 @@ void Collector(int num_workers) {
         error = MPI_Waitany(2, requests, &idx, &st);
 		CHECK_ERROR(error);
 
-        error = MPI_Irecv(buffers[idx], buff_size, MPI_BYTE, MPI_ANY_SOURCE, RESULT_TAG, MPI_COMM_WORLD, requests+idx);
-        CHECK_ERROR(error);
-
 		int source = st.MPI_SOURCE;
         int got = 0;
         MPI_Get_count(&st, MPI_BYTE, &got);
@@ -309,7 +315,19 @@ void Collector(int num_workers) {
         total_received += got;
         tasks_per_worker[source-1] += got;
 
+        std::vector<char*> tasks(got);
+        for(int i = 0; i < got; i++){
+            tasks[0] = new char[task_size];
+            std::memcpy(tasks[0], buffers[idx]+task_size*i, task_size);
+        }
+        tasks.size(); // just to not fuse the two loops togheter
+        for(int i = 0; i < got; i++)
+            delete [] tasks[i];
+
 		if (total_received >= total_tasks) break;
+
+        error = MPI_Irecv(buffers[idx], buff_size, MPI_BYTE, MPI_ANY_SOURCE, RESULT_TAG, MPI_COMM_WORLD, requests+idx);
+        CHECK_ERROR(error);
     }
 	double t_end = MPI_Wtime();
 
