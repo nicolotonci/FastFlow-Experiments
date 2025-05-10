@@ -55,6 +55,8 @@ ff-farm: ff-farm.cpp
 	$(CXX) $(CXXFLAGS) -DDFF_EXCLUDE_BLOCKING -DDFF_ACK $(INCS) $(OPTIMIZE_FLAGS) -o $@ $< $(LIBS)
 mpi-farm: mpi-farm.cpp
 	$(CXX) $(CXXFLAGS) $(OPTIMIZE_FLAGS) -o $@ $< $(LIBS) -fopenmp
+mpi-farm-sync: mpi-farm-sync.cpp
+	$(CXX) $(CXXFLAGS) $(OPTIMIZE_FLAGS) -o $@ $< $(LIBS) -fopenmp
 all: $(TARGET)
 
 clean: 
