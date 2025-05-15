@@ -114,45 +114,110 @@ void Emitter(int size) {
 	// keep track of which buffer to use at each round
     std::vector<int> whichbuffer(num_workers,0);
 
-	#pragma omp parallel
-	{
-		if (omp_get_thread_num() == 1){
+	
 			// initially all worker are ready
 			// prepare and send the batch
-			for(int i=1;i<=num_workers;++i) {
-				prepare_and_send_batch(bufs[i-1][0], i);
-				whichbuffer[i-1] ^= 1; // switch buffer
+			for(int b=1;b<=num_workers;++b) {
+				#pragma omp parallel
+				{
+					int tid = omp_get_thread_num();
+
+					auto& buf = bufs[b-1][0];
+					int& rank = b;
+					int count=0;
+
+					if (tid == 1){
+						for(int i=0;i<batch_tasks &&  tasks_sent<total_tasks; i++, tasks_sent++){
+							// copy garbage into the buffer
+							char *datatask = new char[task_size];
+							std::memcpy(buf.data + i*task_size, datatask, task_size);
+
+							// pertask workload
+							int v = dist(rng);
+							std::memcpy(buf.data + i*task_size, &v, sizeof(int));
+
+							++count;
+							delete [] datatask;
+						}
+					}
+					#pragma omp barrier
+					if (tid == 2){
+						int error = MPI_Send(buf.data, count*task_size,
+											MPI_BYTE, rank,
+											TASK_TAG, MPI_COMM_WORLD);
+						CHECK_ERROR(error);
+						buf.in_use = true;
+						whichbuffer[b-1] ^= 1; // switch buffer
+					}
+				}
 			}
 
 			while(eos_sent < num_workers) {
-				MPI_Status st;
-				error = MPI_Recv(nullptr,0,MPI_BYTE, MPI_ANY_SOURCE, ACK_TAG,
+				#pragma omp parallel
+				{
+					int tid = omp_get_thread_num();
+
+					int ready_rank;
+					int buf_id;
+					int outer_tasks_sent = tasks_sent;
+					int count=0;
+
+					if (tid == 2){
+						MPI_Status st;
+						error = MPI_Recv(nullptr,0,MPI_BYTE, MPI_ANY_SOURCE, ACK_TAG,
 								MPI_COMM_WORLD, &st);
-				CHECK_ERROR(error);
-				int ready_rank = st.MPI_SOURCE;
-
-				if ( tasks_sent < total_tasks ) {
-					int buf_id = whichbuffer[ready_rank-1];
-					auto &buf = bufs[ready_rank-1][buf_id];
-
-					// if the buffer is still in use, wait for send completion
-					/*if (buf.in_use) {
-						error = MPI_Wait(&buf.req, MPI_STATUS_IGNORE);
 						CHECK_ERROR(error);
-						buf.in_use = false;
-					}*/
-					prepare_and_send_batch(buf, ready_rank);
-					whichbuffer[ready_rank-1] ^= 1;
+						ready_rank = st.MPI_SOURCE;
+					}
+
+					#pragma omp barrier
+
+					if (tid == 1){
+
+						if ( tasks_sent < total_tasks ) {
+							buf_id = whichbuffer[ready_rank-1];
+							auto &buf = bufs[ready_rank-1][buf_id];
+
+		
+							
+							for(int i=0;i<batch_tasks &&  tasks_sent<total_tasks; i++, tasks_sent++){
+								// copy garbage into the buffer
+								char *datatask = new char[task_size];
+								std::memcpy(buf.data + i*task_size, datatask, task_size);
+
+								// pertask workload
+								int v = dist(rng);
+								std::memcpy(buf.data + i*task_size, &v, sizeof(int));
+
+								++count;
+								delete [] datatask;
+							}
+						}
+					}
+
+					#pragma omp barrier
+
+					if (tid == 2){
+						if (outer_tasks_sent < total_tasks){
+							auto &buf = bufs[ready_rank-1][buf_id];
+							int error = MPI_Send(buf.data, count*task_size,
+													MPI_BYTE, ready_rank,
+													TASK_TAG, MPI_COMM_WORLD);
+							CHECK_ERROR(error);
+							buf.in_use = true;
+							whichbuffer[ready_rank-1] ^= 1;
+						}
+						else {
+							// sending EOS to stop the Worker
+							error = MPI_Send(nullptr,0,MPI_BYTE, ready_rank, EOS_TAG, MPI_COMM_WORLD);
+							CHECK_ERROR(error);
+							eos_sent++;
+						}
+					}
 				}
-				else {
-					// sending EOS to stop the Worker
-					error = MPI_Send(nullptr,0,MPI_BYTE, ready_rank, EOS_TAG, MPI_COMM_WORLD);
-					CHECK_ERROR(error);
-					eos_sent++;
-				}
+				
 			}
-		}
-	}
+	
     // cleanup
     for(int i=0;i<num_workers;i++){
 		if (bufs[i][0].in_use) {
